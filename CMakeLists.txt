@@ -4,6 +4,11 @@ project(Mnemosyne)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Optional: Automatic vcpkg toolchain detection
+if(NOT CMAKE_TOOLCHAIN_FILE AND DEFINED ENV{VCPKG_ROOT})
+    set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
+endif()
+
 # Find required packages
 find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
@@ -12,9 +17,11 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(GLEW REQUIRED)
 
 # Add all source files
-# Explicitly listing files is preferred over globbing
 set(SOURCES
     "src/main.cpp"
+    "src/Camera.cpp"
+    "src/Shader.cpp"
+    "src/SquareRoom.cpp"
 )
 
 # Create executable
