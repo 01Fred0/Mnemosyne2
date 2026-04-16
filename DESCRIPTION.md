@@ -1,0 +1,1 @@
+Mnemosyne is an innovative 3D spatial memory application that transforms how users organize and recall information by creating immersive, navigable 3D environments for memory palaces. It combines advanced 3D graphics with cognitive science principles to create powerful spatial memory aids.

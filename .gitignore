@@ -1,0 +1,18 @@
+# Build directory
+build/
+bin/
+obj/
+
+# IDE files
+.vscode/
+.vs/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# vcpkg
+vcpkg_installed/
+vcpkg/
