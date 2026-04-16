@@ -18,6 +18,7 @@ public:
 class SquareRoom : public Room {
 public:
     SquareRoom(glm::vec3 position, glm::vec3 size);
+    ~SquareRoom() override;
     void Draw() override;
 
 private:

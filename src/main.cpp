@@ -14,8 +14,8 @@
  */
 
 // Settings
-const unsigned int SCR_WIDTH = 1280;
-const unsigned int SCR_HEIGHT = 720;
+unsigned int SCR_WIDTH = 1280;
+unsigned int SCR_HEIGHT = 720;
 
 // Camera
 Camera camera(glm::vec3(0.0f, 1.5f, 5.0f));
@@ -43,6 +43,8 @@ void processInput(GLFWwindow* window) {
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
+    SCR_WIDTH = width;
+    SCR_HEIGHT = height;
 }
 
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
@@ -127,7 +129,8 @@ int main() {
 
         // Update matrices and draw
         ourShader.use();
-        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+        float aspectRatio = (SCR_HEIGHT > 0) ? (float)SCR_WIDTH / (float)SCR_HEIGHT : 1.0f;
+        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), aspectRatio, 0.1f, 100.0f);
         glm::mat4 view = camera.GetViewMatrix();
         ourShader.setMat4("projection", projection);
         ourShader.setMat4("view", view);

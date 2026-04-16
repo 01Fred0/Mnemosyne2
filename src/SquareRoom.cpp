@@ -5,6 +5,11 @@ SquareRoom::SquareRoom(glm::vec3 position, glm::vec3 size) : Room(position, size
     setupMesh();
 }
 
+SquareRoom::~SquareRoom() {
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+}
+
 void SquareRoom::setupMesh() {
     float vertices[] = {
         // Back face
