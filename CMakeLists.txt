@@ -21,7 +21,8 @@ set(SOURCES
     "src/main.cpp"
     "src/Camera.cpp"
     "src/Shader.cpp"
-    "src/SquareRoom.cpp"
+    "src/Mesh.cpp"
+    "src/Rooms.cpp"
 )
 
 # Create executable
