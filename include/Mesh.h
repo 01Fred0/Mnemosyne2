@@ -18,6 +18,7 @@ public:
     unsigned int VAO;
 
     Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices);
+    ~Mesh();
     void Draw();
 
 private:

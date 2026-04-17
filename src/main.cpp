@@ -9,6 +9,8 @@
 #include "Shader.h"
 #include "Room.h"
 #include "Physics.h"
+#include "Serialization.h"
+#include "Skybox.h"
 
 /**
  * Mnemosyne - 3D Memory Palace Construction Kit
@@ -19,7 +21,7 @@ unsigned int SCR_WIDTH = 1280;
 unsigned int SCR_HEIGHT = 720;
 
 // Camera
-Camera camera(glm::vec3(0.0f, 1.5f, 5.0f));
+Camera camera(glm::vec3(0.0f, 1.5f, 0.0f));
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -35,11 +37,11 @@ glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
 // World
 std::vector<std::unique_ptr<Room>> rooms;
 Room* selectedRoom = nullptr;
+std::unique_ptr<Skybox> skybox;
 
 void performRaycast() {
-    // Simple Raycast: just check rooms in front of camera
     selectedRoom = nullptr;
-    float minDistance = 10.0f; // Max interaction distance
+    float minDistance = 10.0f;
 
     for (const auto& room : rooms) {
         glm::vec3 toRoom = room->Position - camera.Position;
@@ -47,7 +49,7 @@ void performRaycast() {
         if (distance < minDistance) {
             glm::vec3 dirToRoom = glm::normalize(toRoom);
             float alignment = glm::dot(camera.Front, dirToRoom);
-            if (alignment > 0.95f) { // roughly looking at it
+            if (alignment > 0.95f) {
                 selectedRoom = room.get();
                 minDistance = distance;
             }
@@ -70,20 +72,37 @@ void processInput(GLFWwindow* window) {
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         camera.ProcessKeyboard(RIGHT, deltaTime);
 
-    // Basic Collision Detection
-    AABB playerBox = {camera.Position - glm::vec3(0.3f), camera.Position + glm::vec3(0.3f)};
-    bool collision = false;
+    bool insidePalace = false;
     for (const auto& room : rooms) {
-        if (playerBox.intersects(room->GetAABB())) {
-            collision = true;
+        AABB bounds = room->GetAABB();
+        if (camera.Position.x >= bounds.min.x && camera.Position.x <= bounds.max.x &&
+            camera.Position.y >= bounds.min.y && camera.Position.y <= bounds.max.y &&
+            camera.Position.z >= bounds.min.z && camera.Position.z <= bounds.max.z) {
+            insidePalace = true;
             break;
         }
     }
-    if (collision) {
+
+    if (!insidePalace && !rooms.empty()) {
         camera.Position = oldPos;
     }
 
     performRaycast();
+}
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (key == GLFW_KEY_K && action == GLFW_PRESS) {
+        Serialization::SavePalace("palace.json", rooms);
+        std::cout << "Palace saved to palace.json" << std::endl;
+    }
+    if (key == GLFW_KEY_L && action == GLFW_PRESS) {
+        auto loadedRooms = Serialization::LoadPalace("palace.json");
+        if (!loadedRooms.empty()) {
+            selectedRoom = nullptr; // Fix UAF: Reset pointer before clearing rooms
+            rooms = std::move(loadedRooms);
+            std::cout << "Palace loaded from palace.json" << std::endl;
+        }
+    }
 }
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
@@ -103,19 +122,15 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
     float xpos = static_cast<float>(xposIn);
     float ypos = static_cast<float>(yposIn);
-
     if (firstMouse) {
         lastX = xpos;
         lastY = ypos;
         firstMouse = false;
     }
-
     float xoffset = xpos - lastX;
     float yoffset = lastY - ypos;
-
     lastX = xpos;
     lastY = ypos;
-
     camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
@@ -124,21 +139,13 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
 }
 
 int main() {
-    // Initialize GLFW
-    if (!glfwInit()) {
-        std::cerr << "Failed to initialize GLFW" << std::endl;
-        return -1;
-    }
-
-    // Configure GLFW
+    if (!glfwInit()) return -1;
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    // Create Window
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Mnemosyne - Memory Palace Construction Kit", NULL, NULL);
     if (window == NULL) {
-        std::cerr << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
         return -1;
     }
@@ -147,65 +154,63 @@ int main() {
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
-
-    // Capture mouse
+    glfwSetKeyCallback(window, key_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-    // Initialize GLEW
     glewExperimental = GL_TRUE;
-    if (glewInit() != GLEW_OK) {
-        std::cerr << "Failed to initialize GLEW" << std::endl;
-        return -1;
-    }
+    if (glewInit() != GLEW_OK) return -1;
 
-    // Configure global OpenGL state
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
 
-    // Build and compile shader
     Shader ourShader("shaders/vertex.glsl", "shaders/fragment.glsl");
 
-    // Initialize rooms
-    rooms.push_back(std::make_unique<SquareRoom>(glm::vec3(0.0f, 0.0f, -5.0f), glm::vec3(2.0f, 2.0f, 2.0f)));
-    rooms.push_back(std::make_unique<HexRoom>(glm::vec3(5.0f, 0.0f, 0.0f), glm::vec3(2.0f, 2.0f, 2.0f)));
-    rooms.push_back(std::make_unique<RoundRoom>(glm::vec3(-5.0f, 0.0f, 0.0f), glm::vec3(2.0f, 2.0f, 2.0f)));
+    rooms.push_back(std::make_unique<SquareRoom>(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(10.0f, 4.0f, 10.0f)));
+    rooms.push_back(std::make_unique<SquareRoom>(glm::vec3(10.0f, 0.0f, 0.0f), glm::vec3(10.0f, 4.0f, 10.0f)));
+    rooms[0]->AddObject(std::make_unique<FileObject>("KnowledgeBase", glm::vec3(2.0f, 1.0f, -2.0f)));
 
-    // Render loop
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        // Input
         processInput(window);
 
-        // Render
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClearColor(0.05f, 0.05f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // Update matrices and draw
-        ourShader.use();
         float aspectRatio = (SCR_HEIGHT > 0) ? (float)SCR_WIDTH / (float)SCR_HEIGHT : 1.0f;
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), aspectRatio, 0.1f, 100.0f);
         glm::mat4 view = camera.GetViewMatrix();
+
+        if (skybox) skybox->Draw(view, projection);
+
+        ourShader.use();
         ourShader.setMat4("projection", projection);
         ourShader.setMat4("view", view);
-
-        // Lighting uniforms
         ourShader.setVec3("lightDir", lightDir);
         ourShader.setVec3("viewPos", camera.Position);
         ourShader.setVec3("lightColor", lightColor);
 
         for (auto& room : rooms) {
+            glCullFace(GL_FRONT);
             glm::mat4 model = glm::translate(glm::mat4(1.0f), room->Position);
             model = glm::scale(model, room->Size);
             ourShader.setMat4("model", model);
-
-            glm::vec3 color = (room.get() == selectedRoom) ? glm::vec3(1.0f, 1.0f, 0.0f) : glm::vec3(0.6f, 0.6f, 0.6f);
+            glm::vec3 color = (room.get() == selectedRoom) ? glm::vec3(0.8f, 0.8f, 0.4f) : glm::vec3(0.4f, 0.4f, 0.5f);
             ourShader.setVec3("objectColor", color);
             room->Draw();
+
+            glCullFace(GL_BACK);
+            for (auto& obj : room->Objects) {
+                glm::mat4 objModel = glm::translate(glm::mat4(1.0f), obj->Position);
+                objModel = glm::scale(objModel, obj->Scale);
+                ourShader.setMat4("model", objModel);
+                ourShader.setVec3("objectColor", glm::vec3(0.8f, 0.2f, 0.2f));
+                obj->Draw();
+            }
         }
 
-        // Swap buffers and poll IO events
         glfwSwapBuffers(window);
         glfwPollEvents();
     }

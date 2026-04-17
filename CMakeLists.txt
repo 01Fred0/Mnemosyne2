@@ -12,9 +12,11 @@ endif()
 # Find required packages
 find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
-find_package(assimp CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(GLEW REQUIRED)
+
+# Assimp is currently unused but listed in requirements, make it optional
+find_package(assimp CONFIG)
 
 # Add all source files
 set(SOURCES
@@ -23,6 +25,10 @@ set(SOURCES
     "src/Shader.cpp"
     "src/Mesh.cpp"
     "src/Rooms.cpp"
+    "src/Texture.cpp"
+    "src/PalaceObjects.cpp"
+    "src/Serialization.cpp"
+    "src/Skybox.cpp"
 )
 
 # Create executable
@@ -32,10 +38,13 @@ add_executable(Mnemosyne ${SOURCES})
 target_link_libraries(Mnemosyne PRIVATE
     glfw
     glm::glm
-    assimp::assimp
     nlohmann_json::nlohmann_json
     GLEW::GLEW
 )
+
+if(assimp_FOUND)
+    target_link_libraries(Mnemosyne PRIVATE assimp::assimp)
+endif()
 
 # Include directories
 target_include_directories(Mnemosyne PRIVATE include)

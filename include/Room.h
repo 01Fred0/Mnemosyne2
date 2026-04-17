@@ -6,11 +6,13 @@
 #include <memory>
 #include "Mesh.h"
 #include "Physics.h"
+#include "PalaceObject.h"
 
 class Room {
 public:
     glm::vec3 Position;
     glm::vec3 Size;
+    std::vector<std::unique_ptr<PalaceObject>> Objects;
 
     Room(glm::vec3 position, glm::vec3 size) : Position(position), Size(size) {}
     virtual ~Room() = default;
@@ -18,6 +20,10 @@ public:
     virtual void Draw() = 0;
     virtual AABB GetAABB() const {
         return {Position - Size * 0.5f, Position + Size * 0.5f};
+    }
+
+    void AddObject(std::unique_ptr<PalaceObject> obj) {
+        Objects.push_back(std::move(obj));
     }
 };
 
