@@ -34,6 +34,12 @@ This document outlines the discrepancies between the intended features described
 *   **Cause**: The audio subsystem is entirely absent from the current codebase.
 *   **Suggested Action**: Integrate the `miniaudio` library and implement an `AudioManager` class.
 
+### [Feature] Missing Skybox Environments
+*   **Description**: `DESCRIPTION.md` mentions custom skybox backgrounds for each room.
+*   **Current State**: Only a solid clear color (`0.1f, 0.1f, 0.1f`) is used in the render loop.
+*   **Cause**: No cubemap loading or skybox rendering logic implemented.
+*   **Suggested Action**: Implement a `Skybox` class to load and render cubemap textures using a specialized skybox shader.
+
 ### [Feature] Missing Editor Functionality (Gizmos, Snap, Undo/Redo)
 *   **Description**: `DESCRIPTION.md` mentions grid-based snapping, gizmo-based editing, and an undo/redo system.
 *   **Current State**: None of these features are implemented. The application is a pure viewer.
@@ -74,10 +80,21 @@ This document outlines the discrepancies between the intended features described
 *   **Cause**: Inadequate error propagation after failing to read shader files.
 *   **Suggested Action**: Use exceptions or a success flag to prevent the application from proceeding with a broken shader program.
 
+### [Bug] Invalid Resource Destruction Order in main.cpp
+*   **File**: `src/main.cpp`
+*   **Description**: The `rooms` vector (containing `unique_ptr` to `Room` objects) and the `ourShader` object are destroyed *after* `glfwTerminate()` is called.
+*   **Cause**: RAII objects are declared in the `main` function scope and `glfwTerminate()` is called at the end of the function, before the scope ends and the objects' destructors (which call OpenGL functions like `glDeleteVertexArrays`) are executed.
+*   **Suggested Action**: Move `glfwTerminate()` to the very end of the main function or wrap the application logic in a scope to ensure destructors are called while the OpenGL context is still valid.
+
 ### [Improvement] Lack of Resource Management
 *   **Description**: Textures and shaders are loaded directly. `Assimp` is a dependency but not used for model loading.
 *   **Cause**: Missing architectural layer for asset handling.
 *   **Suggested Action**: Implement a `ResourceManager` to prevent duplicate loading of assets and manage OpenGL resource lifetimes efficiently.
+
+### [Improvement] Missing Input and Scene Management Abstraction
+*   **Description**: Input handling and scene rendering are tightly coupled in `main.cpp`.
+*   **Cause**: Monolithic design of the `main` function.
+*   **Suggested Action**: Create an `InputManager` class to handle GLFW callbacks and an `EntityManager`/`Scene` class to manage the lifecycle and rendering of all objects in the memory palace.
 
 ---
 
