@@ -3,6 +3,9 @@
 
 #include <glm/glm.hpp>
 #include <vector>
+#include <memory>
+#include "Mesh.h"
+#include "Physics.h"
 
 class Room {
 public:
@@ -13,16 +16,39 @@ public:
     virtual ~Room() = default;
 
     virtual void Draw() = 0;
+    virtual AABB GetAABB() const {
+        return {Position - Size * 0.5f, Position + Size * 0.5f};
+    }
 };
 
 class SquareRoom : public Room {
 public:
     SquareRoom(glm::vec3 position, glm::vec3 size);
-    ~SquareRoom() override;
     void Draw() override;
 
 private:
-    unsigned int VAO, VBO;
+    std::unique_ptr<Mesh> mesh;
+    void setupMesh();
+};
+
+class RoundRoom : public Room {
+public:
+    RoundRoom(glm::vec3 position, glm::vec3 size, int segments = 32);
+    void Draw() override;
+
+private:
+    std::unique_ptr<Mesh> mesh;
+    int segments;
+    void setupMesh();
+};
+
+class HexRoom : public Room {
+public:
+    HexRoom(glm::vec3 position, glm::vec3 size);
+    void Draw() override;
+
+private:
+    std::unique_ptr<Mesh> mesh;
     void setupMesh();
 };
 
